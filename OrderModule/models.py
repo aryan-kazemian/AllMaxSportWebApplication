@@ -1,0 +1,75 @@
+from django.db import models
+from UserModule.models import User
+from ProductModule.models import Product
+
+DELIVERY_METHOD_CHOICES = [
+    ('standard', 'Standard'),
+    ('express', 'Express'),
+]
+
+class DeliveryDetail(models.Model):
+    carrier = models.CharField(max_length=100)
+    cost = models.DecimalField(max_digits=10, decimal_places=2)
+    estimated_delivery_date = models.DateTimeField()
+    method = models.CharField(max_length=10, choices=DELIVERY_METHOD_CHOICES)
+
+    def __str__(self):
+        return f"{self.carrier}, {self.method}"
+
+
+class DiscountCode(models.Model):
+    code = models.CharField(max_length=20)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return self.code
+
+
+class PaymentGatewayResponse(models.Model):
+    code = models.IntegerField()
+    message = models.CharField(max_length=255)
+    authority = models.CharField(max_length=100)
+    fee_type = models.CharField(max_length=50)
+    fee = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"Response: {self.message}"
+
+
+# --- Order Model ---
+class Order(models.Model):
+    ORDER_STATUS_CHOICES = [
+        ('pending_payment', 'Pending Payment'),
+        ('paid', 'Paid'),
+        ('shipped', 'Shipped'),
+        ('delivered', 'Delivered'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    order_id = models.CharField(max_length=20, unique=True)
+    order_date = models.DateTimeField()
+    order_status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='pending_payment')
+
+    customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
+    delivery_details = models.ForeignKey(DeliveryDetail, on_delete=models.CASCADE, related_name='orders')
+    payment_gateway_response = models.ForeignKey(PaymentGatewayResponse, on_delete=models.CASCADE,
+                                                 related_name='orders')
+    discount_code = models.ForeignKey(DiscountCode, on_delete=models.CASCADE, related_name='orders', null=True,
+                                      blank=True)
+
+    items = models.ManyToManyField(Product, related_name='orders')
+
+    subtotal = models.DecimalField(max_digits=12, decimal_places=2)
+    item_discount = models.DecimalField(max_digits=12, decimal_places=2)
+    coupon_discount = models.DecimalField(max_digits=12, decimal_places=2)
+    shipping = models.DecimalField(max_digits=12, decimal_places=2)
+    tax = models.DecimalField(max_digits=12, decimal_places=2)
+    total = models.DecimalField(max_digits=12, decimal_places=2)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    shipped_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Order {self.order_id} - {self.order_status}"
+
