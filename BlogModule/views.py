@@ -1,3 +1,178 @@
-from django.shortcuts import render
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.parsers import JSONParser
+from .models import Blog, Tag, SEOStatus
+from django.db.models import Q
 
-# Create your views here.
+@csrf_exempt
+def blog_api(request):
+    if request.method == 'GET':
+        if request.GET.get('tags') == 'true':
+            tags = Tag.objects.all().values('id', 'name')
+            return JsonResponse(list(tags), safe=False)
+
+        filters = {}
+        if 'id' in request.GET:
+            filters['id'] = request.GET.get('id')
+        if 'title' in request.GET:
+            filters['title__icontains'] = request.GET.get('title')
+        if 'status' in request.GET:
+            filters['status'] = request.GET.get('status')
+        if 'seo_score' in request.GET:
+            filters['seo_score'] = request.GET.get('seo_score')
+        if 'seo_score_color' in request.GET:
+            filters['seo_score_color'] = request.GET.get('seo_score_color')
+
+        blogs = Blog.objects.filter(**filters).prefetch_related('tags').select_related('seo_status')
+        if 'tags' in request.GET:
+            tag_name = request.GET.get('tags')
+            blogs = blogs.filter(tags__name__icontains=tag_name)
+
+        result = []
+        for blog in blogs:
+            seo = getattr(blog, 'seo_status', None)
+            result.append({
+                'id': blog.id,
+                'title': blog.title,
+                'content': blog.content,
+                'excerpt': blog.excerpt,
+                'meta_description': blog.meta_description,
+                'keywords': blog.keywords,
+                'status': blog.status,
+                'tags': list(blog.tags.values('id', 'name')),
+                'featured_image': blog.featured_image.url if blog.featured_image else None,
+                'modify_date': blog.modify_date,
+                'seo_score': blog.seo_score,
+                'seo_score_color': blog.seo_score_color,
+                'seo_status': {
+                    'title_length_status': seo.title_length_status if seo else None,
+                    'title_length_message': seo.title_length_message if seo else None,
+                    'content_length_status': seo.content_length_status if seo else None,
+                    'content_length_message': seo.content_length_message if seo else None,
+                    'keyword_density_status': seo.keyword_density_status if seo else None,
+                    'keyword_density_message': seo.keyword_density_message if seo else None,
+                    'meta_description_status': seo.meta_description_status if seo else None,
+                    'meta_description_message': seo.meta_description_message if seo else None,
+                    'headings_status': seo.headings_status if seo else None,
+                    'headings_message': seo.headings_message if seo else None,
+                    'images_status': seo.images_status if seo else None,
+                    'images_message': seo.images_message if seo else None,
+                    'internal_links_status': seo.internal_links_status if seo else None,
+                    'internal_links_message': seo.internal_links_message if seo else None,
+                }
+            })
+        return JsonResponse(result, safe=False)
+
+    elif request.method == 'POST':
+        data = JSONParser().parse(request)
+        if request.GET.get('tag') == 'true':
+            tag_name = data.get('tag_name')
+            if tag_name:
+                tag, created = Tag.objects.get_or_create(name=tag_name)
+                return JsonResponse({'id': tag.id, 'name': tag.name, 'created': created})
+            return JsonResponse({'error': 'tag_name required'}, status=400)
+
+        required_fields = ['title', 'status']
+        for field in required_fields:
+            if not data.get(field):
+                return JsonResponse({'error': f'{field} is required'}, status=400)
+
+        blog = Blog.objects.create(
+            title=data['title'],
+            content=data.get('content', ''),
+            excerpt=data.get('excerpt', ''),
+            meta_description=data.get('meta_description', ''),
+            keywords=data.get('keywords', ''),
+            status=data.get('status', 'draft'),
+            seo_score=data.get('seo_score', 0),
+            seo_score_color=data.get('seo_score_color', 'text-gray-500'),
+            featured_image=data.get('featured_image')
+        )
+
+        tag_names = data.get('tags', [])
+        for tag_name in tag_names:
+            tag, _ = Tag.objects.get_or_create(name=tag_name)
+            blog.tags.add(tag)
+
+        seo_data = data.get('seo_status')
+        if seo_data:
+            SEOStatus.objects.create(
+                blog=blog,
+                title_length_status=seo_data.get('title_length_status', 'ok'),
+                title_length_message=seo_data.get('title_length_message', ''),
+                content_length_status=seo_data.get('content_length_status', 'ok'),
+                content_length_message=seo_data.get('content_length_message', ''),
+                keyword_density_status=seo_data.get('keyword_density_status', 'ok'),
+                keyword_density_message=seo_data.get('keyword_density_message', ''),
+                meta_description_status=seo_data.get('meta_description_status', 'ok'),
+                meta_description_message=seo_data.get('meta_description_message', ''),
+                headings_status=seo_data.get('headings_status', 'ok'),
+                headings_message=seo_data.get('headings_message', ''),
+                images_status=seo_data.get('images_status', 'ok'),
+                images_message=seo_data.get('images_message', ''),
+                internal_links_status=seo_data.get('internal_links_status', 'ok'),
+                internal_links_message=seo_data.get('internal_links_message', ''),
+            )
+        return JsonResponse({'message': 'Blog created', 'id': blog.id}, status=201)
+
+    elif request.method == 'DELETE':
+        if 'delete_tag_id' in request.GET:
+            tag_id = request.GET.get('delete_tag_id')
+            try:
+                tag = Tag.objects.get(id=tag_id)
+                tag.delete()
+                return JsonResponse({'message': 'Tag deleted'})
+            except Tag.DoesNotExist:
+                return JsonResponse({'error': 'Tag not found'}, status=404)
+
+        if 'id' in request.GET:
+            blog_id = request.GET.get('id')
+            try:
+                blog = Blog.objects.get(id=blog_id)
+                blog.delete()
+                return JsonResponse({'message': 'Blog deleted'})
+            except Blog.DoesNotExist:
+                return JsonResponse({'error': 'Blog not found'}, status=404)
+
+        return JsonResponse({'error': 'No identifier provided'}, status=400)
+
+    elif request.method == 'PATCH':
+        data = JSONParser().parse(request)
+
+        # Update Blog and SEOStatus in one go
+        if 'id' in request.GET:
+            try:
+                blog = Blog.objects.get(id=request.GET.get('id'))
+
+                # Update Blog fields
+                for field in ['title', 'content', 'excerpt', 'meta_description', 'keywords', 'status', 'seo_score',
+                              'seo_score_color']:
+                    if field in data:
+                        setattr(blog, field, data[field])
+
+                # If SEOStatus exists, update its fields too
+                if hasattr(blog, 'seo_status'):
+                    seo_data = data.get('seo_status')
+                    if seo_data:
+                        seo = blog.seo_status
+
+                        for field in [
+                            'title_length_status', 'title_length_message',
+                            'content_length_status', 'content_length_message',
+                            'keyword_density_status', 'keyword_density_message',
+                            'meta_description_status', 'meta_description_message',
+                            'headings_status', 'headings_message',
+                            'images_status', 'images_message',
+                            'internal_links_status', 'internal_links_message'
+                        ]:
+                            if field in seo_data:
+                                setattr(seo, field, seo_data[field])
+                        seo.save()
+
+                blog.save()  # Save the blog after updating its fields
+                return JsonResponse({'message': 'Blog and SEOStatus updated successfully'})
+
+            except Blog.DoesNotExist:
+                return JsonResponse({'error': 'Blog not found'}, status=404)
+
+    return JsonResponse({'message': 'Method not allowed'}, status=405)

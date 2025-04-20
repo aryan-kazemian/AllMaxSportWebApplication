@@ -10,7 +10,7 @@ class Blog(models.Model):
     content = models.TextField()
     excerpt = models.TextField(blank=True, null=True)
     meta_description = models.TextField(blank=True, null=True)
-    keywords = models.CharField(max_length=500, blank=True)  # comma-separated
+    keywords = models.CharField(max_length=500, blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='draft')
 
     tags = models.ManyToManyField('Tag', blank=True)
