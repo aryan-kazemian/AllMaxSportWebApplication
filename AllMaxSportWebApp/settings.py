@@ -43,9 +43,11 @@ INSTALLED_APPS = [
     'TicketModul',
     'UserModule',
     'rest_framework',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -143,7 +145,7 @@ REST_FRAMEWORK = {
 
 # CORS Headers Settings
 CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins (for public API)
+
 CORS_ALLOWED_ORIGINS = [
-    "https://www.postman.com",  # Allow specific domains (for API testing)
-    "http://yourdomain.com",
+    "http://localhost:3000",
 ]
