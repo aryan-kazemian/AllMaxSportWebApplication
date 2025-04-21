@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'OrderModule',
     'ProductModule',
     'TicketModul',
+    'ImageURLModule',
     'UserModule',
     'rest_framework',
     'corsheaders',
