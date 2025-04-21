@@ -25,6 +25,7 @@ urlpatterns = [
     path("blog/", include("BlogModule.urls")),
     path("products/", include("ProductModule.urls")),
     path("order/", include("OrderModule.urls")),
+    path("upload-images/", include("ImageURLModule.urls")),
 
 ]
 
