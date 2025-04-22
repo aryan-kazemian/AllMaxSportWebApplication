@@ -7,6 +7,7 @@ STATUS_CHOICES = [
 
 class Blog(models.Model):
     title = models.CharField(max_length=255)
+    author =models.CharField(max_length=255, blank=True, null=True)
     content = models.TextField()
     excerpt = models.TextField(blank=True, null=True)
     meta_description = models.TextField(blank=True, null=True)

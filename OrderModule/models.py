@@ -7,14 +7,6 @@ DELIVERY_METHOD_CHOICES = [
     ('express', 'Express'),
 ]
 
-class DeliveryDetail(models.Model):
-    carrier = models.CharField(max_length=100)
-    cost = models.DecimalField(max_digits=10, decimal_places=2)
-    estimated_delivery_date = models.DateTimeField()
-    method = models.CharField(max_length=10, choices=DELIVERY_METHOD_CHOICES)
-
-    def __str__(self):
-        return f"{self.carrier}, {self.method}"
 
 
 class DiscountCode(models.Model):
@@ -23,17 +15,6 @@ class DiscountCode(models.Model):
 
     def __str__(self):
         return self.code
-
-
-class PaymentGatewayResponse(models.Model):
-    code = models.IntegerField()
-    message = models.CharField(max_length=255)
-    authority = models.CharField(max_length=100)
-    fee_type = models.CharField(max_length=50)
-    fee = models.DecimalField(max_digits=10, decimal_places=2)
-
-    def __str__(self):
-        return f"Response: {self.message}"
 
 
 # --- Order Model ---
@@ -51,9 +32,15 @@ class Order(models.Model):
     order_status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='pending_payment')
 
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
-    delivery_details = models.ForeignKey(DeliveryDetail, on_delete=models.CASCADE, related_name='orders')
-    payment_gateway_response = models.ForeignKey(PaymentGatewayResponse, on_delete=models.CASCADE,
-                                                 related_name='orders')
+    carrier = models.CharField(max_length=100)
+    cost = models.DecimalField(max_digits=10, decimal_places=2)
+    estimated_delivery_date = models.DateTimeField()
+    method = models.CharField(max_length=10, choices=DELIVERY_METHOD_CHOICES)
+    code = models.IntegerField()
+    message = models.CharField(max_length=255)
+    authority = models.CharField(max_length=100)
+    fee_type = models.CharField(max_length=50)
+    fee = models.DecimalField(max_digits=10, decimal_places=2)
     discount_code = models.ForeignKey(DiscountCode, on_delete=models.CASCADE, related_name='orders', null=True,
                                       blank=True)
 
