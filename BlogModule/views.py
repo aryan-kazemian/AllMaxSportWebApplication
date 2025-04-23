@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.parsers import JSONParser
-from .models import Blog, Tag, SEOStatus
+from .models import Blog, Tag, SEOStatus, Category
 from django.db.models import Q
 
 @csrf_exempt
@@ -23,7 +23,7 @@ def blog_api(request):
         if 'seo_score_color' in request.GET:
             filters['seo_score_color'] = request.GET.get('seo_score_color')
 
-        blogs = Blog.objects.filter(**filters).prefetch_related('tags').select_related('seo_status')
+        blogs = Blog.objects.filter(**filters).prefetch_related('tags').select_related('seo_status', 'category')
         if 'tags' in request.GET:
             tag_name = request.GET.get('tags')
             blogs = blogs.filter(tags__name__icontains=tag_name)
@@ -31,6 +31,7 @@ def blog_api(request):
         result = []
         for blog in blogs:
             seo = getattr(blog, 'seo_status', None)
+            cat = blog.category
             result.append({
                 'id': blog.id,
                 'title': blog.title,
@@ -59,7 +60,11 @@ def blog_api(request):
                     'images_message': seo.images_message if seo else None,
                     'internal_links_status': seo.internal_links_status if seo else None,
                     'internal_links_message': seo.internal_links_message if seo else None,
-                }
+                },
+                'category': {
+                    'id': cat.id,
+                    'category': cat.name
+                } if cat else None
             })
         return JsonResponse(result, safe=False)
 
@@ -72,10 +77,13 @@ def blog_api(request):
                 return JsonResponse({'id': tag.id, 'name': tag.name, 'created': created})
             return JsonResponse({'error': 'tag_name required'}, status=400)
 
-        required_fields = ['title', 'status']
+        required_fields = ['title', 'status', 'category']
         for field in required_fields:
             if not data.get(field):
                 return JsonResponse({'error': f'{field} is required'}, status=400)
+
+        category_name = data.get('category')
+        category, _ = Category.objects.get_or_create(name=category_name)
 
         blog = Blog.objects.create(
             title=data['title'],
@@ -86,7 +94,8 @@ def blog_api(request):
             status=data.get('status', 'draft'),
             seo_score=data.get('seo_score', 0),
             seo_score_color=data.get('seo_score_color', 'text-gray-500'),
-            featured_image=data.get('featured_image')
+            featured_image=data.get('featured_image'),
+            category=category
         )
 
         tag_names = data.get('tags', [])
@@ -125,6 +134,15 @@ def blog_api(request):
             except Tag.DoesNotExist:
                 return JsonResponse({'error': 'Tag not found'}, status=404)
 
+        if 'category_id' in request.GET:
+            category_id = request.GET.get('category_id')
+            try:
+                category = Category.objects.get(id=category_id)
+                category.delete()
+                return JsonResponse({'message': 'Category deleted'})
+            except Category.DoesNotExist:
+                return JsonResponse({'error': 'Category not found'}, status=404)
+
         if 'id' in request.GET:
             blog_id = request.GET.get('id')
             try:
@@ -138,24 +156,25 @@ def blog_api(request):
 
     elif request.method == 'PATCH':
         data = JSONParser().parse(request)
-
-        # Update Blog and SEOStatus in one go
         if 'id' in request.GET:
             try:
                 blog = Blog.objects.get(id=request.GET.get('id'))
 
-                # Update Blog fields
-                for field in ['title', 'content', 'excerpt', 'meta_description', 'keywords', 'status', 'seo_score',
-                              'seo_score_color']:
+                for field in ['title', 'content', 'excerpt', 'meta_description', 'keywords', 'status', 'seo_score', 'seo_score_color']:
                     if field in data:
                         setattr(blog, field, data[field])
 
-                # If SEOStatus exists, update its fields too
+                if 'category_id' in data:
+                    try:
+                        cat = Category.objects.get(id=data['category_id'])
+                        blog.category = cat
+                    except Category.DoesNotExist:
+                        return JsonResponse({'error': 'Category not found'}, status=404)
+
                 if hasattr(blog, 'seo_status'):
                     seo_data = data.get('seo_status')
                     if seo_data:
                         seo = blog.seo_status
-
                         for field in [
                             'title_length_status', 'title_length_message',
                             'content_length_status', 'content_length_message',
@@ -169,9 +188,8 @@ def blog_api(request):
                                 setattr(seo, field, seo_data[field])
                         seo.save()
 
-                blog.save()  # Save the blog after updating its fields
+                blog.save()
                 return JsonResponse({'message': 'Blog and SEOStatus updated successfully'})
-
             except Blog.DoesNotExist:
                 return JsonResponse({'error': 'Blog not found'}, status=404)
 

@@ -5,10 +5,17 @@ STATUS_CHOICES = [
     ('published', 'Published'),
 ]
 
+class Category(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.name
+
 class Blog(models.Model):
     title = models.CharField(max_length=255)
     author =models.CharField(max_length=255, blank=True, null=True)
     content = models.TextField()
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, null=True)
     excerpt = models.TextField(blank=True, null=True)
     meta_description = models.TextField(blank=True, null=True)
     keywords = models.CharField(max_length=500, blank=True)
