@@ -83,11 +83,19 @@ def product_category_api(request):
         if 'id' in request.GET:
             try:
                 product = Product.objects.get(id=request.GET.get('id'))
+
+                # ✅ Fix: Resolve category name to Category instance
+                if 'category' in data:
+                    category_name = data['category']
+                    category_obj, _ = Category.objects.get_or_create(name=category_name)
+                    data['category'] = category_obj.name  # Keep SlugRelatedField happy
+
                 serializer = ProductSerializer(product, data=data, partial=True)
                 if serializer.is_valid():
                     serializer.save()
                     return JsonResponse(serializer.data)
                 return JsonResponse(serializer.errors, status=400)
+
             except Product.DoesNotExist:
                 return JsonResponse({'error': 'Product not found'}, status=404)
 
