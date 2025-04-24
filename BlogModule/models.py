@@ -29,6 +29,7 @@ class Blog(models.Model):
 
     seo_score = models.PositiveIntegerField(default=0)
     seo_score_color = models.CharField(max_length=20, default='text-gray-500')
+    image = models.ImageField(upload_to='blog/image/', null=True, blank=True)
 
     def __str__(self):
         return self.title

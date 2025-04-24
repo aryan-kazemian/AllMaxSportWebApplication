@@ -1,6 +1,6 @@
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework.parsers import JSONParser
+from rest_framework.parsers import JSONParser, MultiPartParser
 from .models import Blog, Tag, SEOStatus, Category
 from django.db.models import Q
 
@@ -35,7 +35,7 @@ def blog_api(request):
             result.append({
                 'id': blog.id,
                 'title': blog.title,
-                'author': blog.author,  # ✅ Added author to GET
+                'author': blog.author,
                 'content': blog.content,
                 'excerpt': blog.excerpt,
                 'meta_description': blog.meta_description,
@@ -43,6 +43,7 @@ def blog_api(request):
                 'status': blog.status,
                 'tags': list(blog.tags.values('id', 'name')),
                 'featured_image': blog.featured_image.url if blog.featured_image else None,
+                'image': blog.image.url if blog.image else None,  # ✅ Added image to GET
                 'modify_date': blog.modify_date,
                 'seo_score': blog.seo_score,
                 'seo_score_color': blog.seo_score_color,
@@ -70,7 +71,9 @@ def blog_api(request):
         return JsonResponse(result, safe=False)
 
     elif request.method == 'POST':
-        data = JSONParser().parse(request)
+        data = request.POST if request.content_type.startswith('multipart') else JSONParser().parse(request)
+        files = request.FILES if request.content_type.startswith('multipart') else None
+
         if request.GET.get('tag') == 'true':
             tag_name = data.get('tag_name')
             if tag_name:
@@ -88,7 +91,7 @@ def blog_api(request):
 
         blog = Blog.objects.create(
             title=data['title'],
-            author=data.get('author'),  # ✅ Added author to POST
+            author=data.get('author'),
             content=data.get('content', ''),
             excerpt=data.get('excerpt', ''),
             meta_description=data.get('meta_description', ''),
@@ -96,7 +99,8 @@ def blog_api(request):
             status=data.get('status', 'draft'),
             seo_score=data.get('seo_score', 0),
             seo_score_color=data.get('seo_score_color', 'text-gray-500'),
-            featured_image=data.get('featured_image'),
+            featured_image=files.get('featured_image') if files else data.get('featured_image'),
+            image=files.get('image') if files else data.get('image'),  # ✅ Added image to POST
             category=category
         )
 
@@ -126,45 +130,17 @@ def blog_api(request):
             )
         return JsonResponse({'message': 'Blog created', 'id': blog.id}, status=201)
 
-    elif request.method == 'DELETE':
-        if 'delete_tag_id' in request.GET:
-            tag_id = request.GET.get('delete_tag_id')
-            try:
-                tag = Tag.objects.get(id=tag_id)
-                tag.delete()
-                return JsonResponse({'message': 'Tag deleted'})
-            except Tag.DoesNotExist:
-                return JsonResponse({'error': 'Tag not found'}, status=404)
-
-        if 'category_id' in request.GET:
-            category_id = request.GET.get('category_id')
-            try:
-                category = Category.objects.get(id=category_id)
-                category.delete()
-                return JsonResponse({'message': 'Category deleted'})
-            except Category.DoesNotExist:
-                return JsonResponse({'error': 'Category not found'}, status=404)
-
-        if 'id' in request.GET:
-            blog_id = request.GET.get('id')
-            try:
-                blog = Blog.objects.get(id=blog_id)
-                blog.delete()
-                return JsonResponse({'message': 'Blog deleted'})
-            except Blog.DoesNotExist:
-                return JsonResponse({'error': 'Blog not found'}, status=404)
-
-        return JsonResponse({'error': 'No identifier provided'}, status=400)
-
     elif request.method == 'PATCH':
-        data = JSONParser().parse(request)
+        data = request.POST if request.content_type.startswith('multipart') else JSONParser().parse(request)
+        files = request.FILES if request.content_type.startswith('multipart') else None
+
         if 'id' in request.GET:
             try:
                 blog = Blog.objects.get(id=request.GET.get('id'))
 
                 for field in ['title', 'author', 'content', 'excerpt', 'meta_description', 'keywords', 'status', 'seo_score', 'seo_score_color']:
                     if field in data:
-                        setattr(blog, field, data[field])  # ✅ author added to PATCH here
+                        setattr(blog, field, data[field])
 
                 if 'category_id' in data:
                     try:
@@ -172,6 +148,11 @@ def blog_api(request):
                         blog.category = cat
                     except Category.DoesNotExist:
                         return JsonResponse({'error': 'Category not found'}, status=404)
+
+                if files and 'image' in files:
+                    blog.image = files['image']  # ✅ Added image to PATCH (multipart)
+                elif 'image' in data:
+                    blog.image = data['image']  # ✅ Handle JSON image field if needed
 
                 if hasattr(blog, 'seo_status'):
                     seo_data = data.get('seo_status')

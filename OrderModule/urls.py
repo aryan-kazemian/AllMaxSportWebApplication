@@ -1,9 +1,6 @@
-# urls.py
 from django.urls import path
-from .views import order_api
-from . import views
+from .views import OrderAPI
 
 urlpatterns = [
-    path('', order_api, name='order_api'),
-    path('discount_code/', views.discount_code_api, name='discount_code_api'),
+    path("", OrderAPI.as_view(), name="order-api"),
 ]

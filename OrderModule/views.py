@@ -1,144 +1,97 @@
-# views.py
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from rest_framework.parsers import JSONParser
-from .models import Order, Product
-from .serializers import OrderSerializer
-from UserModule.models import User
-from django.db.models import Q
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from .models import Order, DiscountCode, Product
+from .serializers import OrderSerializer, DiscountCodeSerializer
 from datetime import datetime
 
 
-@csrf_exempt
-def order_api(request):
-    if request.method == 'GET':
-        filters = Q()
+class OrderAPI(APIView):
+    def get(self, request, *args, **kwargs):
+        query = request.query_params.get("query")
+        discount_code_id = request.query_params.get("discount_code_id")
 
-        # Apply filters based on query params
-        if 'id' in request.GET:
-            filters &= Q(id=request.GET.get('id'))
-        if 'order_id' in request.GET:
-            filters &= Q(order_id=request.GET.get('order_id'))
-        if 'customer' in request.GET:
-            filters &= Q(customer_id=request.GET.get('customer'))
-        if 'order_status' in request.GET:
-            filters &= Q(order_status=request.GET.get('order_status'))
-        if 'date_from' in request.GET:
-            date_from = datetime.strptime(request.GET.get('date_from'), '%Y-%m-%d')
-            filters &= Q(order_date__gte=date_from)
-        if 'date_to' in request.GET:
-            date_to = datetime.strptime(request.GET.get('date_to'), '%Y-%m-%d')
-            filters &= Q(order_date__lte=date_to)
-        if 'method' in request.GET:
-            filters &= Q(method=request.GET.get('method'))
-        if 'carrier' in request.GET:
-            filters &= Q(carrier__icontains=request.GET.get('carrier'))
+        filters = {}
+        for field in ['id', 'order_id', 'order_date', 'order_status', 'customer', 'method', 'code']:
+            val = request.query_params.get(field)
+            if val:
+                if field == 'order_date':
+                    try:
+                        filters['order_date'] = datetime.strptime(val, '%Y-%m-%dT%H:%M:%S')
+                    except ValueError:
+                        return Response({"error": "Invalid date format. Use ISO format."}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    filters[field] = val
 
-        orders = Order.objects.filter(filters)
+        if query == "discount_code":
+            if discount_code_id:
+                discount_code = get_object_or_404(DiscountCode, id=discount_code_id)
+                serializer = DiscountCodeSerializer(discount_code)
+                return Response(serializer.data)
+            discount_codes = DiscountCode.objects.all()
+            serializer = DiscountCodeSerializer(discount_codes, many=True)
+            return Response(serializer.data)
+
+        orders = Order.objects.filter(**filters) if filters else Order.objects.all()
         serializer = OrderSerializer(orders, many=True)
-        return JsonResponse(serializer.data, safe=False)
+        return Response(serializer.data)
 
-    elif request.method == 'POST':
-        # Add order
-        data = JSONParser().parse(request)
-        customer_id = data.get('customer')
-        if not customer_id:
-            return JsonResponse({'error': 'Customer ID is required'}, status=400)
-
-        customer = User.objects.get(id=customer_id)
-        data['customer'] = customer  # Link customer
-
-        # Handle order items (assuming IDs are passed in)
-        item_ids = data.get('items')
-        if not item_ids:
-            return JsonResponse({'error': 'Items are required'}, status=400)
-
-        items = Product.objects.filter(id__in=item_ids)
-        if not items.exists():
-            return JsonResponse({'error': 'Invalid product IDs'}, status=400)
-        data['items'] = items  # Link items
-
-        serializer = OrderSerializer(data=data)
-        if serializer.is_valid():
-            order = serializer.save()  # Create order
-            return JsonResponse(serializer.data, status=201)
-
-        return JsonResponse(serializer.errors, status=400)
-
-    elif request.method == 'DELETE':
-        if 'id' in request.GET:
-            try:
-                order = Order.objects.get(id=request.GET.get('id'))
-                order.delete()
-                return JsonResponse({'message': 'Order deleted'})
-            except Order.DoesNotExist:
-                return JsonResponse({'error': 'Order not found'}, status=404)
-
-        return JsonResponse({'error': 'No valid delete identifier provided'}, status=400)
-
-    elif request.method == 'PATCH':
-        # Update order
-        data = JSONParser().parse(request)
-        if 'id' in request.GET:
-            try:
-                order = Order.objects.get(id=request.GET.get('id'))
-                serializer = OrderSerializer(order, data=data, partial=True)
-                if serializer.is_valid():
-                    serializer.save()
-                    return JsonResponse(serializer.data)
-                return JsonResponse(serializer.errors, status=400)
-            except Order.DoesNotExist:
-                return JsonResponse({'error': 'Order not found'}, status=404)
-
-        return JsonResponse({'error': 'No valid patch identifier provided'}, status=400)
-
-    return JsonResponse({'message': 'Method not allowed'}, status=405)
-
-
-def discount_code_api(request):
-    if request.method == 'GET':
-        # Retrieve all discount codes or filter by ID
-        if 'id' in request.GET:
-            # Get a single discount code by ID
-            discount_code = get_object_or_404(DiscountCode, id=request.GET.get('id'))
-            serializer = DiscountCodeSerializer(discount_code)
-            return JsonResponse(serializer.data)
-
-        # If no 'id' filter, return a list of all discount codes
-        discount_codes = DiscountCode.objects.all()
-        serializer = DiscountCodeSerializer(discount_codes, many=True)
-        return JsonResponse(serializer.data, safe=False)
-
-    # POST - Create a new DiscountCode
-    elif request.method == 'POST':
-        data = JSONParser().parse(request)
-        serializer = DiscountCodeSerializer(data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return JsonResponse(serializer.data, status=201)
-        return JsonResponse(serializer.errors, status=400)
-
-    # PATCH - Update an existing DiscountCode
-    elif request.method == 'PATCH':
-        data = JSONParser().parse(request)
-        if 'id' in request.GET:
-            discount_code = get_object_or_404(DiscountCode, id=request.GET.get('id'))
-            serializer = DiscountCodeSerializer(discount_code, data=data, partial=True)
+    def post(self, request, *args, **kwargs):
+        if request.query_params.get("query") == "discount_code":
+            serializer = DiscountCodeSerializer(data=request.data)
             if serializer.is_valid():
                 serializer.save()
-                return JsonResponse(serializer.data)
-            return JsonResponse(serializer.errors, status=400)
-        return JsonResponse({'error': 'No valid patch identifier provided'}, status=400)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # DELETE - Delete a DiscountCode
-    elif request.method == 'DELETE':
-        if 'id' in request.GET:
-            try:
-                discount_code = DiscountCode.objects.get(id=request.GET.get('id'))
-                discount_code.delete()
-                return JsonResponse({'message': 'Discount code deleted successfully'})
-            except DiscountCode.DoesNotExist:
-                return JsonResponse({'error': 'Discount code not found'}, status=404)
-        return JsonResponse({'error': 'No valid delete identifier provided'}, status=400)
+        # Handle POST for Order
+        serializer = OrderSerializer(data=request.data)
+        if serializer.is_valid():
+            # Ensure we properly handle 'items' as ManyToMany relation
+            if 'items' in request.data:
+                items_ids = request.data['items']
+                items = Product.objects.filter(id__in=items_ids)
+                serializer.validated_data['items'] = items
 
-    return JsonResponse({'message': 'Method not allowed'}, status=405)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, *args, **kwargs):
+        order_id = request.query_params.get("id")
+        discount_code_id = request.query_params.get("discount_code_id")
+
+        if order_id:
+            order = get_object_or_404(Order, id=order_id)
+            serializer = OrderSerializer(order, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        if discount_code_id:
+            discount_code = get_object_or_404(DiscountCode, id=discount_code_id)
+            serializer = DiscountCodeSerializer(discount_code, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"error": "Missing id or discount_code_id"}, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, *args, **kwargs):
+        order_id = request.query_params.get("id")
+        discount_code_id = request.query_params.get("discount_code_id")
+
+        if order_id:
+            order = get_object_or_404(Order, id=order_id)
+            order.delete()
+            return Response({"message": "Order deleted"}, status=status.HTTP_200_OK)
+
+        if discount_code_id:
+            discount_code = get_object_or_404(DiscountCode, id=discount_code_id)
+            discount_code.delete()
+            return Response({"message": "Discount code deleted"}, status=status.HTTP_200_OK)
+
+        return Response({"error": "Missing id or discount_code_id"}, status=status.HTTP_400_BAD_REQUEST)

@@ -1,27 +1,23 @@
-# serializers.py
 from rest_framework import serializers
-from .models import Order
-from ProductModule.models import Product
-from UserModule.models import User
-from .models import DiscountCode
-
+from .models import Order, DiscountCode
 
 class OrderSerializer(serializers.ModelSerializer):
-    customer = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
-    items = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all(), many=True)
-    discount_code = serializers.PrimaryKeyRelatedField(queryset=DiscountCode.objects.all(), required=False)
+    customer = serializers.PrimaryKeyRelatedField(read_only=True)
+    discount_code = serializers.PrimaryKeyRelatedField(read_only=True)
+    items = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
 
     class Meta:
         model = Order
-        fields = ['id', 'order_id', 'order_date', 'order_status', 'customer', 'carrier', 'cost',
-                  'estimated_delivery_date', 'method', 'code', 'message', 'authority', 'fee_type',
-                  'fee', 'discount_code', 'items', 'subtotal', 'item_discount', 'coupon_discount',
-                  'shipping', 'tax', 'total', 'created_at', 'updated_at', 'shipped_at']
-
-
-
+        fields = [
+            'order_id', 'order_date', 'order_status', 'customer',
+            'carrier', 'cost', 'estimated_delivery_date', 'method',
+            'code', 'message', 'authority', 'fee_type', 'fee',
+            'discount_code', 'items', 'subtotal', 'item_discount',
+            'coupon_discount', 'shipping', 'tax', 'total',
+            'created_at', 'updated_at', 'shipped_at'
+        ]
 
 class DiscountCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = DiscountCode
-        fields = ['id', 'code', 'amount']
+        fields = '__all__'
