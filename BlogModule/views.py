@@ -35,6 +35,7 @@ def blog_api(request):
             result.append({
                 'id': blog.id,
                 'title': blog.title,
+                'author': blog.author,  # ✅ Added author to GET
                 'content': blog.content,
                 'excerpt': blog.excerpt,
                 'meta_description': blog.meta_description,
@@ -87,6 +88,7 @@ def blog_api(request):
 
         blog = Blog.objects.create(
             title=data['title'],
+            author=data.get('author'),  # ✅ Added author to POST
             content=data.get('content', ''),
             excerpt=data.get('excerpt', ''),
             meta_description=data.get('meta_description', ''),
@@ -160,9 +162,9 @@ def blog_api(request):
             try:
                 blog = Blog.objects.get(id=request.GET.get('id'))
 
-                for field in ['title', 'content', 'excerpt', 'meta_description', 'keywords', 'status', 'seo_score', 'seo_score_color']:
+                for field in ['title', 'author', 'content', 'excerpt', 'meta_description', 'keywords', 'status', 'seo_score', 'seo_score_color']:
                     if field in data:
-                        setattr(blog, field, data[field])
+                        setattr(blog, field, data[field])  # ✅ author added to PATCH here
 
                 if 'category_id' in data:
                     try:
