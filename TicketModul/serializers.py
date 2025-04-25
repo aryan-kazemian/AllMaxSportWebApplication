@@ -7,8 +7,20 @@ class MessageSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class TicketSerializer(serializers.ModelSerializer):
+    # Keep this read-only so it won’t mess with creation
     messages = MessageSerializer(many=True, read_only=True)
 
     class Meta:
         model = Ticket
-        fields = '__all__'
+        fields = [
+            'id',
+            'status',
+            'priority',
+            'subject',
+            'related_order_id',
+            'customer',
+            'created_at',
+            'updated_at',
+            'resolved_at',
+            'messages'
+        ]

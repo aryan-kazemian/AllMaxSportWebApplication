@@ -4,6 +4,7 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from .models import Ticket, Message
 from .serializers import TicketSerializer, MessageSerializer
+import traceback
 
 class TicketView(APIView):
     def get(self, request, *args, **kwargs):
@@ -18,21 +19,25 @@ class TicketView(APIView):
         return Response(serializer.data)
 
     def post(self, request, *args, **kwargs):
-        ticket_id = request.query_params.get('id')
+        try:
+            ticket_id = request.query_params.get('id')
 
-        if ticket_id:
-            ticket = get_object_or_404(Ticket, pk=ticket_id)
-            serializer = MessageSerializer(data=request.data)
+            if ticket_id:
+                ticket = get_object_or_404(Ticket, pk=ticket_id)
+                serializer = MessageSerializer(data=request.data)
+                if serializer.is_valid():
+                    serializer.save(ticket=ticket)
+                    return Response(serializer.data, status=status.HTTP_201_CREATED)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            serializer = TicketSerializer(data=request.data)
             if serializer.is_valid():
-                serializer.save(ticket=ticket)
+                serializer.save()
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        serializer = TicketSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(traceback.format_exc())  # for dev console
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def patch(self, request, *args, **kwargs):
         ticket_id = request.query_params.get('id')
