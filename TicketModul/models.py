@@ -20,6 +20,7 @@ class Ticket(models.Model):
     subject = models.CharField(max_length=255)
     related_order_id = models.CharField(max_length=30, null=True, blank=True)
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tickets')
+    customer_name = models.CharField(max_length=255, null=True, blank=True)
 
     created_at = models.DateTimeField()
     updated_at = models.DateTimeField()

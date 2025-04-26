@@ -24,7 +24,7 @@ urlpatterns = [
     path("user/", include("UserModule.urls")),
     path("blog/", include("BlogModule.urls")),
     path("products/", include("ProductModule.urls")),
-    path("order/", include("OrderModule.urls")),
+    path("orders/", include("OrderModule.urls")),
     path("upload-images/", include("ImageURLModule.urls")),
     path("tickets/", include("TicketModul.urls")),
 ]

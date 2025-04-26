@@ -19,8 +19,9 @@ class TicketSerializer(serializers.ModelSerializer):
             'subject',
             'related_order_id',
             'customer',
+            'customer_name',
             'created_at',
             'updated_at',
             'resolved_at',
-            'messages'
+            'messages',
         ]

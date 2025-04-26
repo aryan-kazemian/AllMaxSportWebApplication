@@ -22,6 +22,10 @@ def product_category_api(request):
             filters &= Q(price__lte=request.GET.get('max_price'))
         if 'min_price' in request.GET:
             filters &= Q(price__gte=request.GET.get('min_price'))
+        if 'max_sale_price' in request.GET:
+            filters &= Q(sale_price__lte=request.GET.get('max_sale_price'))
+        if 'min_sale_price' in request.GET:
+            filters &= Q(sale_price__gte=request.GET.get('min_sale_price'))
         if 'category' in request.GET:
             filters &= Q(category__name__icontains=request.GET.get('category'))
         if 'brand' in request.GET:
