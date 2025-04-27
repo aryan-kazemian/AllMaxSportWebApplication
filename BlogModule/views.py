@@ -6,6 +6,7 @@ from django.db.models import Q
 from urllib.parse import urlparse
 import os
 
+
 @csrf_exempt
 def blog_api(request):
     if request.method == 'GET':
@@ -155,7 +156,8 @@ def blog_api(request):
             try:
                 blog = Blog.objects.get(id=request.GET.get('id'))
 
-                for field in ['title', 'author', 'content', 'excerpt', 'meta_description', 'keywords', 'status', 'seo_score', 'seo_score_color']:
+                for field in ['title', 'author', 'content', 'excerpt', 'meta_description', 'keywords', 'status',
+                              'seo_score', 'seo_score_color']:
                     if field in data:
                         setattr(blog, field, data[field])
 
@@ -199,5 +201,25 @@ def blog_api(request):
                 return JsonResponse({'message': 'Blog and SEOStatus updated successfully'})
             except Blog.DoesNotExist:
                 return JsonResponse({'error': 'Blog not found'}, status=404)
+
+    elif request.method == 'DELETE':
+        if 'id' in request.GET:
+            try:
+                blog = Blog.objects.get(id=request.GET.get('id'))
+                blog.delete()
+                return JsonResponse({'message': 'Blog deleted successfully'})
+            except Blog.DoesNotExist:
+                return JsonResponse({'error': 'Blog not found'}, status=404)
+
+        elif 'category_id' in request.GET:
+            try:
+                category = Category.objects.get(id=request.GET.get('category_id'))
+                category.delete()
+                return JsonResponse({'message': 'Category deleted successfully'})
+            except Category.DoesNotExist:
+                return JsonResponse({'error': 'Category not found'}, status=404)
+
+        else:
+            return JsonResponse({'error': 'No id or category_id provided'}, status=400)
 
     return JsonResponse({'message': 'Method not allowed'}, status=405)

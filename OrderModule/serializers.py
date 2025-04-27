@@ -5,7 +5,7 @@ from ProductModule.models import Product
 class DiscountCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = DiscountCode
-        fields = ['id', 'code', 'amount']
+        fields = ['id', 'code', 'percentage']
 
 class OrderItemSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source='product.id')
@@ -22,17 +22,22 @@ class CreateOrderItemSerializer(serializers.Serializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(source='order_items', many=True, read_only=True)
+    address = serializers.CharField(allow_blank=True, allow_null=True)
+    postal_code = serializers.CharField(allow_blank=True, allow_null=True)
 
     class Meta:
         model = Order
         fields = [
             'id', 'order_id', 'order_date', 'customer', 'carrier', 'order_status',
             'method', 'code', 'estimated_delivery_date', 'items',
-            'subtotal', 'shipping', 'tax', 'total'
+            'subtotal', 'shipping', 'tax', 'total',
+            'address', 'postal_code'  # <-- Added postal_code too
         ]
 
 class CreateOrderSerializer(serializers.ModelSerializer):
     items = CreateOrderItemSerializer(many=True)
+    address = serializers.CharField(allow_blank=True, allow_null=True, required=False)
+    postal_code = serializers.CharField(allow_blank=True, allow_null=True, required=False)
 
     class Meta:
         model = Order
@@ -41,7 +46,8 @@ class CreateOrderSerializer(serializers.ModelSerializer):
             'carrier', 'cost', 'estimated_delivery_date', 'method', 'code', 'message',
             'authority', 'fee_type', 'fee', 'items',
             'subtotal', 'item_discount', 'coupon_discount', 'shipping', 'tax', 'total',
-            'created_at', 'updated_at', 'shipped_at'
+            'created_at', 'updated_at', 'shipped_at',
+            'address', 'postal_code'  # <-- Added postal_code here too
         ]
 
     def create(self, validated_data):

@@ -9,7 +9,7 @@ DELIVERY_METHOD_CHOICES = [
 
 class DiscountCode(models.Model):
     code = models.CharField(max_length=20)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    percentage = models.DecimalField(max_digits=10, decimal_places=2)
 
     def __str__(self):
         return self.code
@@ -29,6 +29,9 @@ class Order(models.Model):
 
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
     customer_name = models.CharField(max_length=200, null=True, blank=True)
+
+    address = models.TextField(null=True, blank=True)
+    postal_code = models.CharField(max_length=100, null=True, blank=True)
 
     carrier = models.CharField(max_length=100)
     cost = models.DecimalField(max_digits=10, decimal_places=2)

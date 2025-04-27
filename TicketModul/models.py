@@ -20,7 +20,7 @@ class Ticket(models.Model):
     subject = models.CharField(max_length=255)
     related_order_id = models.CharField(max_length=30, null=True, blank=True)
     customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tickets')
-    customer_name = models.CharField(max_length=255, null=True, blank=True)
+    customer_name =  models.CharField(max_length=255, null=True, blank=True)
 
     created_at = models.DateTimeField()
     updated_at = models.DateTimeField()
@@ -42,11 +42,11 @@ class Message(models.Model):
     timestamp = models.DateTimeField()
 
     message = models.TextField()
-    file_id = models.CharField(max_length=30, unique=True)
-    file_name = models.CharField(max_length=255)
-    file_type = models.CharField(max_length=50)
-    file_size = models.IntegerField()
-    file_url = models.CharField(max_length=500)
+    file_id = models.CharField(max_length=30, unique=True,  null=True, blank=True)
+    file_name = models.CharField(max_length=255, null=True, blank=True)
+    file_type = models.CharField(max_length=50, null=True, blank=True)
+    file_size = models.IntegerField(null=True, blank=True)
+    file_url = models.CharField(max_length=500, null=True, blank=True)
 
     def __str__(self):
         return f"{self.id} ({self.sender})"
