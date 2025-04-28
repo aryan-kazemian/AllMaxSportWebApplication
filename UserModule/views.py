@@ -9,6 +9,10 @@ from UserModule.serializers import UserSerializer
 @csrf_exempt
 def user_api(request):
     if request.method == 'GET':
+        if request.GET.get('get_active_users_count') == 'true':
+            active_users_count = User.objects.filter(is_active=True).count()
+            return JsonResponse({'active_users_count': active_users_count})
+
         user_id = request.GET.get('id')
         phone = request.GET.get('phone')
         user_type = request.GET.get('user_type')
@@ -36,6 +40,7 @@ def user_api(request):
 
         serializer = UserSerializer(users, many=True)
         return JsonResponse(serializer.data, safe=False)
+
 
     elif request.method == 'POST':
         data = JSONParser().parse(request)

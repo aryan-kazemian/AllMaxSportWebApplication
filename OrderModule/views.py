@@ -4,9 +4,26 @@ from rest_framework import status
 from .models import Order, DiscountCode
 from .serializers import OrderSerializer, CreateOrderSerializer, DiscountCodeSerializer
 from django.shortcuts import get_object_or_404
+from datetime import timedelta
+from django.utils import timezone
+from django.db.models import Sum
 
 class OrderDiscountAPIView(APIView):
     def get(self, request):
+        get_last_months_profit = request.query_params.get('get_last_months_profit')
+
+        if get_last_months_profit:
+            try:
+                num_months = int(get_last_months_profit)
+                days = num_months * 30
+                from_date = timezone.now() - timedelta(days=days)
+                orders = Order.objects.filter(created_at__gte=from_date)
+                total_profit = orders.aggregate(total_sum=Sum('total'))['total_sum'] or 0
+                return Response({'last_months_profit': total_profit}, status=status.HTTP_200_OK)
+            except ValueError:
+                return Response({'error': 'Invalid number provided for get_last_months_profit'},
+                                status=status.HTTP_400_BAD_REQUEST)
+
         discount_code = request.query_params.get('discount_code')
         discount_code_id = request.query_params.get('discount_code_id')
         order_id = request.query_params.get('id')
