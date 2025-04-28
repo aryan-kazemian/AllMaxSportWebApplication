@@ -45,7 +45,7 @@ def blog_api(request):
                 'status': blog.status,
                 'tags': list(blog.tags.values('id', 'name')),
                 'featured_image': blog.featured_image.url if blog.featured_image else None,
-                'images': blog.images,  # <-- updated here ✅
+                'images': blog.images,  # <-- now it’s a single string ✅
                 'modify_date': blog.modify_date,
                 'seo_score': blog.seo_score,
                 'seo_score_color': blog.seo_score_color,
@@ -98,11 +98,10 @@ def blog_api(request):
             parsed_url = urlparse(data['featured_image'])
             featured_image = parsed_url.path if parsed_url.path else None
 
-        # 🛠 Handle images (JSON list of URLs)
-        images = data.get('images', [])
-        if isinstance(images, str):
-            import json
-            images = json.loads(images)
+        # 🛠 Handle images (now a single URL string)
+        images = data.get('images', '')
+        if isinstance(images, list):
+            images = images[0] if images else ''
 
         blog = Blog.objects.create(
             title=data['title'],
@@ -115,7 +114,7 @@ def blog_api(request):
             seo_score=data.get('seo_score', 0),
             seo_score_color=data.get('seo_score_color', 'text-gray-500'),
             featured_image=featured_image,
-            images=images,  # <-- updated here ✅
+            images=images,  # <-- save single URL ✅
             category=category
         )
 
@@ -166,11 +165,10 @@ def blog_api(request):
                         return JsonResponse({'error': 'Category not found'}, status=404)
 
                 if 'images' in data:
-                    images = data.get('images', [])
-                    if isinstance(images, str):
-                        import json
-                        images = json.loads(images)
-                    blog.images = images  # <-- updated here ✅
+                    images = data.get('images', '')
+                    if isinstance(images, list):
+                        images = images[0] if images else ''
+                    blog.images = images  # <-- save single URL ✅
 
                 if files and 'featured_image' in files:
                     blog.featured_image = files['featured_image']
