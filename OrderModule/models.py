@@ -48,7 +48,7 @@ class Order(models.Model):
     items = models.ManyToManyField(Product, through='OrderItem', related_name='orders')
 
     subtotal = models.DecimalField(max_digits=12, decimal_places=2)
-    item_discount = models.DecimalField(max_digits=12, decimal_places=2)
+    item_discount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     coupon_discount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     shipping = models.DecimalField(max_digits=12, decimal_places=2)
     tax = models.DecimalField(max_digits=12, decimal_places=2)
