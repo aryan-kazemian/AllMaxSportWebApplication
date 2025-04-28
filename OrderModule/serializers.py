@@ -31,11 +31,11 @@ class OrderSerializer(serializers.ModelSerializer):
             'id', 'order_id', 'order_date', 'customer', 'carrier', 'order_status',
             'method', 'code', 'estimated_delivery_date', 'items',
             'subtotal', 'shipping', 'tax', 'total',
-            'address', 'postal_code'  # <-- Added postal_code too
+            'address', 'postal_code'
         ]
 
 class CreateOrderSerializer(serializers.ModelSerializer):
-    items = CreateOrderItemSerializer(many=True)
+    items = OrderItemSerializer(source='order_items', many=True, read_only=True)
     address = serializers.CharField(allow_blank=True, allow_null=True, required=False)
     postal_code = serializers.CharField(allow_blank=True, allow_null=True, required=False)
 
@@ -44,14 +44,13 @@ class CreateOrderSerializer(serializers.ModelSerializer):
         fields = [
             'order_id', 'order_date', 'order_status', 'customer', 'customer_name',
             'carrier', 'cost', 'estimated_delivery_date', 'method', 'code', 'message',
-            'authority', 'fee_type', 'fee', 'items',
-            'subtotal', 'item_discount', 'coupon_discount', 'shipping', 'tax', 'total',
-            'created_at', 'updated_at', 'shipped_at',
-            'address', 'postal_code'  # <-- Added postal_code here too
+            'authority', 'fee_type', 'fee', 'subtotal', 'item_discount', 'coupon_discount',
+            'shipping', 'tax', 'total', 'address', 'postal_code', 'items'
         ]
 
     def create(self, validated_data):
-        items_data = validated_data.pop('items')
+        items_data = self.initial_data.get('items')  # ← change here
+        validated_data.pop('items', None)  # ← prevent conflict
         order = Order.objects.create(**validated_data)
         for item in items_data:
             product = Product.objects.get(id=item['id'])
@@ -59,7 +58,8 @@ class CreateOrderSerializer(serializers.ModelSerializer):
         return order
 
     def update(self, instance, validated_data):
-        items_data = validated_data.pop('items', None)
+        items_data = self.initial_data.get('items')  # ← same trick
+        validated_data.pop('items', None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
@@ -70,3 +70,4 @@ class CreateOrderSerializer(serializers.ModelSerializer):
                 product = Product.objects.get(id=item['id'])
                 OrderItem.objects.create(order=instance, product=product, quantity=item['quantity'])
         return instance
+
