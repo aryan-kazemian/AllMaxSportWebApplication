@@ -22,14 +22,13 @@ class Blog(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='draft')
 
     tags = models.ManyToManyField('Tag', blank=True)
-    featured_image = models.ImageField(upload_to='blog/featured_images/', null=True, blank=True)
 
     created_date = models.DateTimeField(auto_now_add=True)
     modify_date = models.DateTimeField(auto_now=True)
 
     seo_score = models.PositiveIntegerField(default=0)
     seo_score_color = models.CharField(max_length=20, default='text-gray-500')
-    images = models.CharField(max_length=1000, blank=True, null=True)
+    featured_image = models.CharField(max_length=1000, blank=True, null=True)
 
     def __str__(self):
         return self.title

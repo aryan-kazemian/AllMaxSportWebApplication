@@ -6,6 +6,7 @@ from django.db.models import Q
 from urllib.parse import urlparse
 import os
 
+
 @csrf_exempt
 def blog_api(request):
     if request.method == 'GET':
@@ -44,8 +45,7 @@ def blog_api(request):
                 'keywords': blog.keywords,
                 'status': blog.status,
                 'tags': list(blog.tags.values('id', 'name')),
-                'featured_image': blog.featured_image.url if blog.featured_image else None,
-                'images': blog.images,  # <-- now it’s a single string ✅
+                'featured_image': blog.featured_image,  # <-- now it’s a single string ✅
                 'modify_date': blog.modify_date,
                 'seo_score': blog.seo_score,
                 'seo_score_color': blog.seo_score_color,
@@ -91,17 +91,9 @@ def blog_api(request):
         category_name = data.get('category')
         category, _ = Category.objects.get_or_create(name=category_name)
 
-        featured_image = None
-        if files and 'featured_image' in files:
-            featured_image = files['featured_image']
-        elif 'featured_image' in data:
-            parsed_url = urlparse(data['featured_image'])
-            featured_image = parsed_url.path if parsed_url.path else None
-
-        # 🛠 Handle images (now a single URL string)
-        images = data.get('images', '')
-        if isinstance(images, list):
-            images = images[0] if images else ''
+        featured_image = data.get('featured_image', '')
+        if isinstance(featured_image, list):
+            featured_image = featured_image[0] if featured_image else ''
 
         blog = Blog.objects.create(
             title=data['title'],
@@ -113,8 +105,7 @@ def blog_api(request):
             status=data.get('status', 'draft'),
             seo_score=data.get('seo_score', 0),
             seo_score_color=data.get('seo_score_color', 'text-gray-500'),
-            featured_image=featured_image,
-            images=images,  # <-- save single URL ✅
+            featured_image=featured_image,  # <-- save single URL ✅
             category=category
         )
 
@@ -164,17 +155,13 @@ def blog_api(request):
                     except Category.DoesNotExist:
                         return JsonResponse({'error': 'Category not found'}, status=404)
 
-                if 'images' in data:
-                    images = data.get('images', '')
-                    if isinstance(images, list):
-                        images = images[0] if images else ''
-                    blog.images = images  # <-- save single URL ✅
+                if 'featured_image' in data:
+                    featured_image = data.get('featured_image', '')
+                    if isinstance(featured_image, list):
+                        featured_image = featured_image[0] if featured_image else ''
+                    blog.featured_image = featured_image  # <-- save single URL ✅
 
-                if files and 'featured_image' in files:
-                    blog.featured_image = files['featured_image']
-                elif 'featured_image' in data:
-                    parsed_url = urlparse(data['featured_image'])
-                    blog.featured_image = parsed_url.path if parsed_url.path else None
+                blog.save()
 
                 if hasattr(blog, 'seo_status'):
                     seo_data = data.get('seo_status')
@@ -193,7 +180,6 @@ def blog_api(request):
                                 setattr(seo, field, seo_data[field])
                         seo.save()
 
-                blog.save()
                 return JsonResponse({'message': 'Blog and SEOStatus updated successfully'})
             except Blog.DoesNotExist:
                 return JsonResponse({'error': 'Blog not found'}, status=404)
