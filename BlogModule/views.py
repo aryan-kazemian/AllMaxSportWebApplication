@@ -6,7 +6,6 @@ from django.db.models import Q
 from urllib.parse import urlparse
 import os
 
-
 @csrf_exempt
 def blog_api(request):
     if request.method == 'GET':
@@ -46,7 +45,7 @@ def blog_api(request):
                 'status': blog.status,
                 'tags': list(blog.tags.values('id', 'name')),
                 'featured_image': blog.featured_image.url if blog.featured_image else None,
-                'image': blog.image.url if blog.image else None,
+                'images': blog.images,  # <-- updated here ✅
                 'modify_date': blog.modify_date,
                 'seo_score': blog.seo_score,
                 'seo_score_color': blog.seo_score_color,
@@ -92,7 +91,6 @@ def blog_api(request):
         category_name = data.get('category')
         category, _ = Category.objects.get_or_create(name=category_name)
 
-        # 🛠 Fix featured_image handling
         featured_image = None
         if files and 'featured_image' in files:
             featured_image = files['featured_image']
@@ -100,12 +98,11 @@ def blog_api(request):
             parsed_url = urlparse(data['featured_image'])
             featured_image = parsed_url.path if parsed_url.path else None
 
-        image = None
-        if files and 'image' in files:
-            image = files['image']
-        elif 'image' in data:
-            parsed_url = urlparse(data['image'])
-            image = parsed_url.path if parsed_url.path else None
+        # 🛠 Handle images (JSON list of URLs)
+        images = data.get('images', [])
+        if isinstance(images, str):
+            import json
+            images = json.loads(images)
 
         blog = Blog.objects.create(
             title=data['title'],
@@ -118,7 +115,7 @@ def blog_api(request):
             seo_score=data.get('seo_score', 0),
             seo_score_color=data.get('seo_score_color', 'text-gray-500'),
             featured_image=featured_image,
-            image=image,
+            images=images,  # <-- updated here ✅
             category=category
         )
 
@@ -168,11 +165,12 @@ def blog_api(request):
                     except Category.DoesNotExist:
                         return JsonResponse({'error': 'Category not found'}, status=404)
 
-                if files and 'image' in files:
-                    blog.image = files['image']
-                elif 'image' in data:
-                    parsed_url = urlparse(data['image'])
-                    blog.image = parsed_url.path if parsed_url.path else None
+                if 'images' in data:
+                    images = data.get('images', [])
+                    if isinstance(images, str):
+                        import json
+                        images = json.loads(images)
+                    blog.images = images  # <-- updated here ✅
 
                 if files and 'featured_image' in files:
                     blog.featured_image = files['featured_image']
