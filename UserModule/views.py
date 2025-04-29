@@ -46,16 +46,24 @@ def user_api(request):
         data = JSONParser().parse(request)
         if data.get('action') == 'login':
             email = data.get('email')
+            username = data.get('username')
             password = data.get('password')
+
             try:
-                user = User.objects.get(email=email)
+                if email:
+                    user = User.objects.get(email=email)
+                elif username:
+                    user = User.objects.get(username=username)
+                else:
+                    return JsonResponse({'message': 'Email or username is required'}, status=400)
+
                 if check_password(password, user.password):
                     serializer = UserSerializer(user)
                     return JsonResponse(serializer.data, safe=False)
                 else:
                     return JsonResponse({'message': 'Incorrect password'}, status=401)
             except User.DoesNotExist:
-                return JsonResponse({'message': 'No user with this email'}, status=404)
+                return JsonResponse({'message': 'User not found'}, status=404)
         else:
             if 'password' in data:
                 data['password'] = make_password(data['password'])
@@ -64,6 +72,7 @@ def user_api(request):
                 serializer.save()
                 return JsonResponse(serializer.data, status=201)
             return JsonResponse(serializer.errors, status=400)
+
 
     elif request.method == 'PATCH':
         user_id = request.GET.get('id')

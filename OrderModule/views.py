@@ -27,6 +27,7 @@ class OrderDiscountAPIView(APIView):
         discount_code = request.query_params.get('discount_code')
         discount_code_id = request.query_params.get('discount_code_id')
         order_id = request.query_params.get('id')
+        user_id = request.query_params.get('user_id')  # ← ADDED
 
         if discount_code == 'true':
             discounts = DiscountCode.objects.all()
@@ -44,8 +45,12 @@ class OrderDiscountAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         orders = Order.objects.all()
+        if user_id:  # ← ADDED
+            orders = orders.filter(customer_id=user_id)  # ← ADDED
+
         serializer = OrderSerializer(orders, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
     def post(self, request):
         discount_code = request.query_params.get('discount_code')

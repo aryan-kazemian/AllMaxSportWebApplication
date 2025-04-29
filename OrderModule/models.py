@@ -10,6 +10,7 @@ DELIVERY_METHOD_CHOICES = [
 class DiscountCode(models.Model):
     code = models.CharField(max_length=20)
     percentage = models.DecimalField(max_digits=10, decimal_places=2)
+    expire_date = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.code

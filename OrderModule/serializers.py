@@ -5,7 +5,7 @@ from ProductModule.models import Product
 class DiscountCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = DiscountCode
-        fields = ['id', 'code', 'percentage']
+        fields = ['id', 'code', 'percentage', "expire_date"]
 
 class OrderItemSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source='product.id')
@@ -28,7 +28,7 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = [
-            'id', 'order_id', 'order_date', 'customer', 'carrier', 'order_status',
+            'id', 'order_id', 'order_date', 'customer', "customer_name", 'carrier', 'order_status',
             'method', 'code', 'estimated_delivery_date', 'items',
             'subtotal', 'shipping', 'tax', 'total',
             'address', 'postal_code'
