@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'TicketModul',
     'ImageURLModule',
     'UserModule',
+    'ReactConnectorModule',
     'rest_framework',
     'corsheaders',
 ]
@@ -63,7 +64,7 @@ ROOT_URLCONF = 'AllMaxSportWebApp.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates']
+        'DIRS': [BASE_DIR / 'build']
         ,
         'APP_DIRS': True,
         'OPTIONS': {
@@ -75,6 +76,7 @@ TEMPLATES = [
         },
     },
 ]
+
 
 WSGI_APPLICATION = 'AllMaxSportWebApp.wsgi.application'
 
@@ -126,6 +128,13 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+STATICFILES_DIRS = [
+    BASE_DIR / 'build' / 'static',
+]
+
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -136,13 +145,17 @@ MEDIA_ROOT = BASE_DIR / 'Media'
 
 AUTH_USER_MODEL = 'UserModule.User'
 
-# Django REST Framework Configuration
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [],  # No authentication (public API)
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',  # Allow public access
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',  # Allow read-only for unauthenticated users
     ],
 }
+
+
 
 # CORS Headers Settings
 CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins (for public API)
@@ -150,3 +163,5 @@ CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins (for public API)
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
 ]
+
+

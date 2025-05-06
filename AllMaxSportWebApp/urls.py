@@ -20,6 +20,7 @@ from django.conf.urls.static import static
 from django.conf import settings
 
 urlpatterns = [
+    path('', include("ReactConnectorModule.urls")),
     path('admin/', admin.site.urls),
     path("api/user/", include("UserModule.urls")),
     path("api/blog/", include("BlogModule.urls")),
