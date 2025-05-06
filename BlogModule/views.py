@@ -6,9 +6,9 @@ from django.db.models import Q
 from urllib.parse import urlparse
 import os
 
+
 @csrf_exempt
 def blog_api(request):
-    # Allow GET for anyone
     if request.method == 'GET':
         if request.GET.get('tags') == 'true':
             tags = Tag.objects.all().values('id', 'name')
@@ -45,7 +45,7 @@ def blog_api(request):
                 'keywords': blog.keywords,
                 'status': blog.status,
                 'tags': list(blog.tags.values('id', 'name')),
-                'featured_image': blog.featured_image,
+                'featured_image': blog.featured_image,  # <-- now it’s a single string ✅
                 'modify_date': blog.modify_date,
                 'seo_score': blog.seo_score,
                 'seo_score_color': blog.seo_score_color,
@@ -72,11 +72,7 @@ def blog_api(request):
             })
         return JsonResponse(result, safe=False)
 
-    # PROTECT POST
     elif request.method == 'POST':
-        if not request.user.is_authenticated or not request.user.is_staff:
-            return JsonResponse({'error': 'Unauthorized. Admin access required.'}, status=403)
-
         data = request.POST if request.content_type.startswith('multipart') else JSONParser().parse(request)
         files = request.FILES if request.content_type.startswith('multipart') else None
 
@@ -109,7 +105,7 @@ def blog_api(request):
             status=data.get('status', 'draft'),
             seo_score=data.get('seo_score', 0),
             seo_score_color=data.get('seo_score_color', 'text-gray-500'),
-            featured_image=featured_image,
+            featured_image=featured_image,  # <-- save single URL ✅
             category=category
         )
 
@@ -139,11 +135,7 @@ def blog_api(request):
             )
         return JsonResponse({'message': 'Blog created', 'id': blog.id}, status=201)
 
-    # PROTECT PATCH
     elif request.method == 'PATCH':
-        if not request.user.is_authenticated or not request.user.is_staff:
-            return JsonResponse({'error': 'Unauthorized. Admin access required.'}, status=403)
-
         data = request.POST if request.content_type.startswith('multipart') else JSONParser().parse(request)
         files = request.FILES if request.content_type.startswith('multipart') else None
 
@@ -167,7 +159,7 @@ def blog_api(request):
                     featured_image = data.get('featured_image', '')
                     if isinstance(featured_image, list):
                         featured_image = featured_image[0] if featured_image else ''
-                    blog.featured_image = featured_image
+                    blog.featured_image = featured_image  # <-- save single URL ✅
 
                 blog.save()
 
@@ -192,11 +184,7 @@ def blog_api(request):
             except Blog.DoesNotExist:
                 return JsonResponse({'error': 'Blog not found'}, status=404)
 
-    # PROTECT DELETE
     elif request.method == 'DELETE':
-        if not request.user.is_authenticated or not request.user.is_staff:
-            return JsonResponse({'error': 'Unauthorized. Admin access required.'}, status=403)
-
         if 'id' in request.GET:
             try:
                 blog = Blog.objects.get(id=request.GET.get('id'))
